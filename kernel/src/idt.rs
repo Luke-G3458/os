@@ -1,5 +1,6 @@
 /// Interrupt Descriptor Table (IDT) module.
 use core::ptr::addr_of;
+use core::sync::atomic::{AtomicU8, Ordering};
 
 use crate::{pic, vga::Vga};
 
@@ -47,11 +48,17 @@ pub struct IdtDescriptor {
     base: u64,
 }
 
+static LAST_SCANCODE: AtomicU8 = AtomicU8::new(0);
+
+pub fn get_scancode() -> u8 {
+    LAST_SCANCODE.swap(0, Ordering::SeqCst)
+}
+
 static mut IDT: [IdtEntry; 256] = [IdtEntry::empty(); 256];
 
 pub fn load_idt() {
     unsafe {
-        let handler_addr = keyboard_handler_wrapper as u64;
+        let handler_addr = keyboard_handler_wrapper as *const () as u64;
         IDT[33] = IdtEntry::new(handler_addr, 0x18)
     }
 
@@ -68,18 +75,12 @@ pub fn load_idt() {
 #[unsafe(no_mangle)]
 extern "C" fn keyboard_handler() {
     let scancode = pic::inb(0x60);
-    let mut vga = Vga::new();
 
-    unsafe {
-        let high = scancode >> 4;
-        let low = scancode & 0xF;
-        let to_hex = |n: u8| -> u8 { if n < 10 { b'0' + n } else { b'A' + n - 10 } };
-        vga.print_char(b'0');
-        vga.print_char(b'x');
-        vga.print_char(to_hex(high));
-        vga.print_char(to_hex(low));
-        vga.newline();
-    }
+    let high = scancode >> 4;
+    let low = scancode & 0xF;
+    let to_hex = |n: u8| -> u8 { if n < 10 { b'0' + n } else { b'A' + n - 10 } };
+
+    LAST_SCANCODE.store(scancode, Ordering::SeqCst);
 
     pic::send_eoi();
 }

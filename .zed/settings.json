@@ -5,16 +5,17 @@
         "linkedProjects": ["kernel/Cargo.toml"],
         "cargo": {
           "buildScripts": {
-            "enable": true
+            "enable": true,
           },
           "sysroot": "discover",
-          "extraArgs": ["-Zbuild-std=core"],
-          "test": false
+          "extraArgs": ["-Z", "json-target-spec"],
+          "test": false,
         },
         "check": {
-          "extraArgs": ["-Zbuild-std=core"]
-        }
-      }
-    }
-  }
+          "allTargets": false,
+          "extraArgs": ["-Z", "json-target-spec"],
+        },
+      },
+    },
+  },
 }
