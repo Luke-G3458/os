@@ -1,12 +1,13 @@
+set windows-shell := ["cmd.exe", "/c"]
+
 _default:
-    @just --choose
+    @just --list
 
 build:
     nasm boot.asm -f bin -o boot.bin
-    cd kernel && cargo build --release && rust-objcopy -O binary target/x86_64-kernel/release/kernel kernel.bin
-    cat boot.bin kernel/kernel.bin > os.bin
-    # Pad os.bin to at least 3 sectors (bootloader + 4 kernel sectors)
-    truncate -s 2560 os.bin
+    cd kernel && cargo build --release -Z json-target-spec && rust-objcopy -O binary target/x86_64-kernel/release/kernel kernel.bin
+    copy /b boot.bin+kernel\kernel.bin os.bin
+    fsutil file seteof os.bin 2560
 
 run: build
     qemu-system-x86_64 -hda os.bin
